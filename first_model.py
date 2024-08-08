@@ -280,6 +280,10 @@ num_correct = 0
 
 h = net.init_hidden(batch_size)
 
+true_positives = 0
+false_positives = 0
+false_negatives = 0
+
 net.eval()
 for inputs, labels in test_loader:
 
@@ -304,6 +308,13 @@ for inputs, labels in test_loader:
     correct = np.squeeze(correct_tensor.numpy()) if not train_on_gpu else np.squeeze(correct_tensor.cpu().numpy())
     num_correct += np.sum(correct)
 
+    for p in range(len(pred)):
+        if pred[p] == 1 and labels[p] == 1:
+            true_positives += 1
+        if pred[p] == 1 and labels[p] == 0:
+            false_positives += 1
+        if pred[p] == 0 and labels[p] == 1:
+            false_negatives += 1
 
 # -- stats! -- ##
 # avg test loss
@@ -313,6 +324,13 @@ print("Test loss: {:.3f}".format(np.mean(test_losses)))
 test_acc = num_correct/len(test_loader.dataset)
 print("Test accuracy: {:.3f}".format(test_acc))
 
+# Calculate precision, recall, and F1-score
+precision = true_positives / (true_positives + false_positives)
+recall = true_positives / (true_positives + false_negatives)
+f1 = 2 * (precision * recall) / (precision + recall)
+print("Precision: {:.3f}".format(precision))
+print("Recall: {:.3f}".format(recall))
+print("F1 Score: {:.3f}".format(f1))
 
 # On User-generated Data
 # First, we will define a tokenize function that will take care of pre-processing steps and then we will create a predict function that will give us the final output after parsing the user provided review.
