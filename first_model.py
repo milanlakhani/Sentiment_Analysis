@@ -19,8 +19,7 @@ output_size = 1
 epochs = 3
 print_every = 100
 gradient_clipping = 5
-learning_rate = 0.001
-dropout_prob = 0.3
+learning_rate = 0.01
 
 run = wandb.init(
     project = "SA1",
@@ -31,9 +30,8 @@ run = wandb.init(
         "n_layers": 2,
         "output_size": 1,
         "epochs": 3,
-        "gradient_clipping": 5,
-        "learning_rate": 0.001,
-        "dropout_prob": 0.3
+        "gradient_clipping": 5
+        "learning_rate": 0.01
     },
 )
 
@@ -141,20 +139,6 @@ print('Sample label: \n', sample_y)
 
 # Define the LSTM Network Architecture
 
-class Attention(nn.Module):
-    def __init__(self, hidden_dim):
-        super(Attention, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.attn = nn.Linear(hidden_dim, hidden_dim)
-        self.softmax = nn.Softmax(dim=1)
-
-    def forward(self, lstm_output, final_hidden_state):
-        attn_weights = self.attn(final_hidden_state)
-        attn_weights = torch.bmm(lstm_output, attn_weights.unsqueeze(2)).squeeze(2)
-        soft_attn_weights = self.softmax(attn_weights)
-        new_hidden_state = torch.bmm(lstm_output.transpose(1, 2), soft_attn_weights.unsqueeze(2)).squeeze(2)
-        return new_hidden_state
-
 class SentimentLSTM(nn.Module):
     def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, drop_prob=0.5):
         super().__init__()
@@ -163,29 +147,24 @@ class SentimentLSTM(nn.Module):
         self.hidden_dim = hidden_dim
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.encoder_lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers,
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers,
                             dropout=drop_prob, batch_first=True)
-        self.decoder_lstm = nn.LSTM(hidden_dim, hidden_dim, n_layers,
-                            dropout=drop_prob, batch_first=True)
-        self.attention = Attention(hidden_dim)
-        self.dropout = nn.Dropout(dropout_prob)
+        self.dropout = nn.Dropout(0.3)
         self.fc = nn.Linear(hidden_dim, output_size)
         self.sig = nn.Sigmoid()
+
 
     def forward(self, x, hidden):
         batch_size = x.size(0)
 
         embeds = self.embedding(x)
-        enc_lstm_out, hidden = self.encoder_lstm(embeds, hidden)
+        lstm_out, hidden = self.lstm(embeds, hidden)
 
-        # Pass the encoder output to the decoder
-        dec_lstm_out, hidden = self.decoder_lstm(enc_lstm_out, hidden)
-
-        # Apply attention mechanism
-        attn_output = self.attention(dec_lstm_out, hidden[0][-1])
+        # Stack up LSTM outputs
+        lstm_out = lstm_out.contiguous().view(-1, self.hidden_dim)
 
         # Dropout and fully-connected layer
-        out = self.dropout(attn_output)
+        out = self.dropout(lstm_out)
         out = self.fc(out)
         # Sigmoid function
         sig_out = self.sig(out)
@@ -198,9 +177,9 @@ class SentimentLSTM(nn.Module):
 
 
     def init_hidden(self, batch_size):
-        ''' Create two new tensors with sizes n_layers x batch_size x hidden_dim,
-            initialized to zero, for hidden state and cell state of LSTM
-        '''
+
+        # Create two new tensors with sizes n_layers x batch_size x hidden_dim,
+        # initialized to zero, for hidden state and cell state of LSTM
         weight = next(self.parameters()).data
 
         if (train_on_gpu):
