@@ -1,0 +1,82 @@
+{
+    "os": "Linux-6.8.0-39-generic-x86_64-with-glibc2.39",
+    "python": "3.12.3",
+    "heartbeatAt": "2024-08-08T10:31:58.870565",
+    "startedAt": "2024-08-08T10:31:57.332501",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/milan/Sentiment_Analysis/no_attentoin_imbd_sentiment_analysis_using_pytorch_lstm.py",
+    "codePathLocal": "no_attentoin_imbd_sentiment_analysis_using_pytorch_lstm.py",
+    "codePath": "no_attentoin_imbd_sentiment_analysis_using_pytorch_lstm.py",
+    "host": "milan-ThinkPad-P50",
+    "username": "milan",
+    "executable": "/home/milan/Image_705/seq/bin/python",
+    "cpu_count": 4,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 2750.959875,
+        "min": 800.0,
+        "max": 3600.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2801.028,
+            "min": 800.0,
+            "max": 3600.0
+        },
+        {
+            "current": 2400.007,
+            "min": 800.0,
+            "max": 3600.0
+        },
+        {
+            "current": 2904.601,
+            "min": 800.0,
+            "max": 3600.0
+        },
+        {
+            "current": 2883.491,
+            "min": 800.0,
+            "max": 3600.0
+        },
+        {
+            "current": 2916.262,
+            "min": 800.0,
+            "max": 3600.0
+        },
+        {
+            "current": 2820.446,
+            "min": 800.0,
+            "max": 3600.0
+        },
+        {
+            "current": 2963.54,
+            "min": 800.0,
+            "max": 3600.0
+        },
+        {
+            "current": 2927.786,
+            "min": 800.0,
+            "max": 3600.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 232.6370506286621,
+            "used": 54.356632232666016
+        }
+    },
+    "gpu": "Quadro M1000M",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "Quadro M1000M",
+            "memory_total": 2147483648
+        }
+    ],
+    "memory": {
+        "total": 15.47530746459961
+    }
+}

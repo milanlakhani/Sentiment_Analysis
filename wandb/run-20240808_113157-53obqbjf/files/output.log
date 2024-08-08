@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/home/milan/Sentiment_Analysis/no_attentoin_imbd_sentiment_analysis_using_pytorch_lstm.py", line 40, in <module>
+    df = pd.read_csv("./IMDB Dataset.csv")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/milan/Image_705/seq/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
+    return _read(filepath_or_buffer, kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/milan/Image_705/seq/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 620, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/milan/Image_705/seq/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/milan/Image_705/seq/lib/python3.12/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
+    self.handles = get_handle(
+                   ^^^^^^^^^^^
+  File "/home/milan/Image_705/seq/lib/python3.12/site-packages/pandas/io/common.py", line 873, in get_handle
+    handle = open(
+             ^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: './IMDB Dataset.csv'
