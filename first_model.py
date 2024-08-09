@@ -75,6 +75,7 @@ reviews_len = [len(x) for x in reviews_int]
 pd.Series(reviews_len).hist()
 plt.show()
 pd.Series(reviews_len).describe()
+wandb.log("Review lengths": wandb.Image(plt))
 
 # Remove Outliers — Getting rid of extremely long or short reviews
 reviews_int = [ reviews_int[i] for i, l in enumerate(reviews_len) if l>0 ]
@@ -272,6 +273,8 @@ for e in range(epochs):
                   "Step: {}...".format(counter),
                   "Loss: {:.6f}...".format(loss.item()),
                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
+            wandb.log({"epoch": epoch, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
+
 
 # Testing
 
@@ -317,8 +320,9 @@ for inputs, labels in test_loader:
             false_negatives += 1
 
 # -- stats! -- ##
-# avg test loss
-print("Test loss: {:.3f}".format(np.mean(test_losses)))
+# Avg test loss
+test_loss = np.mean(test_losses)
+print("Test loss: {:.3f}".format(test_loss))
 
 # Accuracy over all test data
 test_acc = num_correct/len(test_loader.dataset)
@@ -331,6 +335,8 @@ f1 = 2 * (precision * recall) / (precision + recall)
 print("Precision: {:.3f}".format(precision))
 print("Recall: {:.3f}".format(recall))
 print("F1 Score: {:.3f}".format(f1))
+
+wandb.log({"Test loss": test_loss, "Test accuracy": test_acc, "Precision": precision, "Recall": recall, "F1 Score": f1})
 
 # On User-generated Data
 # First, we will define a tokenize function that will take care of pre-processing steps and then we will create a predict function that will give us the final output after parsing the user provided review.
