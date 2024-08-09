@@ -21,6 +21,8 @@ print_every = 100
 gradient_clipping = 5
 learning_rate = 0.001
 dropout_prob = 0.3
+seq_length = 200
+split_frac = 0.8
 
 run = wandb.init(
     project = "SA1",
@@ -33,9 +35,22 @@ run = wandb.init(
         "epochs": 3,
         "gradient_clipping": 5,
         "learning_rate": 0.001,
-        "dropout_prob": 0.3
+        "dropout_prob": 0.3,
+        "seq_length": 200,
+        "split_frac": 0.8
     },
 )
+
+def save_checkpoint(epoch, model, model_name, optimizer):
+    ckpt = {'epoch': epoch, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
+    torch.save(ckpt, f"{model_name}_ckpt_{str(epoch)}.pth")
+ 
+ 
+def load_checkpoint(model, file_name):
+    ckpt = torch.load(file_name, map_location=device)
+    model_weights = ckpt['model_weights']
+    model.load_state_dict(model_weights)
+    print("Model's pretrained weights loaded!")
 
 df = pd.read_csv("./IMDB Dataset.csv")
 
@@ -75,11 +90,14 @@ encoded_labels = np.array(encoded_labels)
 # Analyze Reviews Length
 reviews_len = [len(x) for x in reviews_int]
 pd.Series(reviews_len).hist()
+plt.xlabel('Review Length (Number of Words)')
+plt.ylabel('Frequency')
+plt.title('Distribution of Review Lengths')
 plt.show()
 pd.Series(reviews_len).describe()
-wandb.log("Review lengths": wandb.Image(plt))
+wandb.log({"Review lengths": wandb.Image(plt)})
 
-# Remove Outliers — Getting rid of extremely long or short reviews
+# Remove reviews of 0 length
 reviews_int = [ reviews_int[i] for i, l in enumerate(reviews_len) if l>0 ]
 encoded_labels = [ encoded_labels[i] for i, l in enumerate(reviews_len) if l> 0 ]
 
@@ -102,12 +120,10 @@ def pad_features(reviews_int, seq_length):
 
     return features
 
-features = pad_features(reviews_int,200)
+features = pad_features(reviews_int,seq_length)
 len_feat = len(features)
-split_frac = 0.8
 
 # Training, Validation, Test Dataset Split
-split_frac = 0.8
 train_x = features[0:int(split_frac*len_feat)]
 train_y = encoded_labels[0:int(split_frac*len_feat)]
 remaining_x = features[int(split_frac*len_feat):]
@@ -294,7 +310,7 @@ for e in range(epochs):
                   "Step: {}...".format(counter),
                   "Loss: {:.6f}...".format(loss.item()),
                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
-            wandb.log({"epoch": epoch, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
+            wandb.log({"epoch": epochs, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
 
 # Testing
 
@@ -358,6 +374,7 @@ print("Recall: {:.3f}".format(recall))
 print("F1 Score: {:.3f}".format(f1))
 
 wandb.log({"Test loss": test_loss, "Test accuracy": test_acc, "Precision": precision, "Recall": recall, "F1 Score": f1})
+save_checkpoint(epoch, net, "LSTM-2", optimizer)
 
 # On User-generated Data
 # First, we will define a tokenize function that will take care of pre-processing steps and then we will create a predict function that will give us the final output after parsing the user provided review.
