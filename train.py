@@ -21,7 +21,7 @@ print_every = 100
 gradient_clipping = 5
 learning_rate = 0.001
 dropout_prob = 0.3
-seq_length = 200
+seq_length = 500
 split_frac = 0.8
 
 run = wandb.init(
