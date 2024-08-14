@@ -23,7 +23,7 @@ gradient_clipping = 5
 learning_rate = 0.0005
 dropout_prob = 0.3
 seq_length = 500
-split_frac = 0.8
+split_frac = 0.6
 num_heads = 8
 
 run = wandb.init(
@@ -39,14 +39,14 @@ run = wandb.init(
         "learning_rate": 0.0005,
         "dropout_prob": 0.3,
         "seq_length": 500,
-        "split_frac": 0.8,
+        "split_frac": 0.6,
         "num_heads": 8
     },
 )
 
 def save_checkpoint(epoch, model, model_name, optimizer):
-    ckpt = {'epoch': epochs, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
-    torch.save(ckpt, f"checkpoints/{model_name}_ckpt_epch_{str(epochs)}.pth")
+    ckpt = {'epoch': epoch, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
+    torch.save(ckpt, f"checkpoints/{model_name}_ckpt_epch_{str(epoch)}.pth")
  
 
 def load_checkpoint(model, file_name):
@@ -267,7 +267,7 @@ if(train_on_gpu):
     net.cuda()
 
 net.train()
-for e in range(epochs):
+for epoch in range(epochs):
     # Initialize hidden state
     h = net.init_hidden(batch_size)
 
@@ -316,12 +316,14 @@ for e in range(epochs):
                 val_losses.append(val_loss.item())
 
             net.train()
-            print("Epoch: {}/{}...".format(e+1, epochs),
+            print("Epoch: {}/{}...".format(epoch+1, epochs),
                   "Step: {}...".format(counter),
                   "Loss: {:.6f}...".format(loss.item()),
                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
-    wandb.log({"epoch": epochs, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
-    save_checkpoint(epochs, net, "LSTM-2", optimizer)
+    wandb.log({"epoch": epoch+1, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
+    print(f"Saving epoch {epoch+1} checkpoint")
+    save_checkpoint(epoch+1, net, "LSTM-2", optimizer)
+    print(f"Saved epoch {epoch+1} checkpoint")
 
 # Testing
 
@@ -385,7 +387,6 @@ print("Recall: {:.3f}".format(recall))
 print("F1 Score: {:.3f}".format(f1))
 
 wandb.log({"Test loss": test_loss, "Test accuracy": test_acc, "Precision": precision, "Recall": recall, "F1 Score": f1})
-save_checkpoint(epochs, net, "LSTM-2", optimizer)
 
 # On User-generated Data
 # First, we will define a tokenize function that will take care of pre-processing steps and then we will create a predict function that will give us the final output after parsing the user provided review.
