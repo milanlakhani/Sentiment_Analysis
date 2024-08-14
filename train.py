@@ -36,14 +36,14 @@ run = wandb.init(
         "gradient_clipping": 5,
         "learning_rate": 0.001,
         "dropout_prob": 0.3,
-        "seq_length": 200,
+        "seq_length": 500,
         "split_frac": 0.8
     },
 )
 
 def save_checkpoint(epoch, model, model_name, optimizer):
-    ckpt = {'epoch': epoch, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
-    torch.save(ckpt, f"{model_name}_ckpt_{str(epoch)}.pth")
+    ckpt = {'epoch': epochs, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
+    torch.save(ckpt, f"checkpoints/{model_name}_ckpt_{str(epochs)}.pth")
  
  
 def load_checkpoint(model, file_name):
@@ -310,7 +310,8 @@ for e in range(epochs):
                   "Step: {}...".format(counter),
                   "Loss: {:.6f}...".format(loss.item()),
                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
-            wandb.log({"epoch": epochs, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
+    wandb.log({"epoch": epochs, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
+    save_checkpoint(epochs, net, "LSTM-2", optimizer)
 
 # Testing
 
@@ -374,7 +375,7 @@ print("Recall: {:.3f}".format(recall))
 print("F1 Score: {:.3f}".format(f1))
 
 wandb.log({"Test loss": test_loss, "Test accuracy": test_acc, "Precision": precision, "Recall": recall, "F1 Score": f1})
-save_checkpoint(epoch, net, "LSTM-2", optimizer)
+save_checkpoint(epochs, net, "LSTM-2", optimizer)
 
 # On User-generated Data
 # First, we will define a tokenize function that will take care of pre-processing steps and then we will create a predict function that will give us the final output after parsing the user provided review.
