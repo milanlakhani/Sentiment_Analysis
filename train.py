@@ -158,19 +158,26 @@ print('Sample label: \n', sample_y)
 
 # Define the LSTM Network Architecture
 
-class Attention(nn.Module):
-    def __init__(self, hidden_dim):
-        super(Attention, self).__init__()
+class MultiHeadAttention(nn.Module):
+    def __init__(self, hidden_dim, num_heads=8):
+        super(MultiHeadAttention, self).__init__()
         self.hidden_dim = hidden_dim
-        self.attn = nn.Linear(hidden_dim, hidden_dim)
+        self.multihead_attn = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=num_heads, batch_first=True)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, lstm_output, final_hidden_state):
-        attn_weights = self.attn(final_hidden_state)
-        attn_weights = torch.bmm(lstm_output, attn_weights.unsqueeze(2)).squeeze(2)
-        soft_attn_weights = self.softmax(attn_weights)
-        new_hidden_state = torch.bmm(lstm_output.transpose(1, 2), soft_attn_weights.unsqueeze(2)).squeeze(2)
-        return new_hidden_state
+        # attn_weights = self.attn(final_hidden_state)
+        # attn_weights = torch.bmm(lstm_output, attn_weights.unsqueeze(2)).squeeze(2)
+        # soft_attn_weights = self.softmax(attn_weights)
+        # new_hidden_state = torch.bmm(lstm_output.transpose(1, 2), soft_attn_weights.unsqueeze(2)).squeeze(2)
+        # return new_hidden_state
+        # Expand the final_hidden_state to match lstm_output's sequence length
+        final_hidden_state = final_hidden_state.unsqueeze(1).repeat(1, lstm_output.size(1), 1)
+
+        # Apply multi-head attention
+        attn_output, _ = self.multihead_attn(query=final_hidden_state, key=lstm_output, value=lstm_output)
+
+        return attn_output.mean(dim=1)  # Average over the sequence length
 
 class SentimentLSTM(nn.Module):
     def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, drop_prob=0.5):
@@ -184,7 +191,7 @@ class SentimentLSTM(nn.Module):
                             dropout=drop_prob, batch_first=True)
         self.decoder_lstm = nn.LSTM(hidden_dim, hidden_dim, n_layers,
                             dropout=drop_prob, batch_first=True)
-        self.attention = Attention(hidden_dim)
+        self.attention = MultiHeadAttention(hidden_dim)
         self.dropout = nn.Dropout(dropout_prob)
         self.fc = nn.Linear(hidden_dim, output_size)
         self.sig = nn.Sigmoid()
