@@ -47,7 +47,8 @@ run = wandb.init(
 def save_checkpoint(epoch, model, model_name, optimizer):
     ckpt = {'epoch': epoch, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
     torch.save(ckpt, f"checkpoints/{model_name}_ckpt_epch_{str(epoch)}.pth")
- 
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def load_checkpoint(model, file_name):
     ckpt = torch.load(file_name, map_location=device)
