@@ -1,3 +1,4 @@
+# !pip install wandb
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,10 +20,11 @@ output_size = 1
 epochs = 3
 print_every = 100
 gradient_clipping = 5
-learning_rate = 0.001
+learning_rate = 0.0005
 dropout_prob = 0.3
 seq_length = 500
 split_frac = 0.8
+num_heads = 8
 
 run = wandb.init(
     project = "SA1",
@@ -34,18 +36,19 @@ run = wandb.init(
         "output_size": 1,
         "epochs": 3,
         "gradient_clipping": 5,
-        "learning_rate": 0.001,
+        "learning_rate": 0.0005,
         "dropout_prob": 0.3,
         "seq_length": 500,
-        "split_frac": 0.8
+        "split_frac": 0.8,
+        "num_heads": 8
     },
 )
 
 def save_checkpoint(epoch, model, model_name, optimizer):
     ckpt = {'epoch': epochs, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
-    torch.save(ckpt, f"checkpoints/{model_name}_ckpt_{str(epochs)}.pth")
+    torch.save(ckpt, f"checkpoints/{model_name}_ckpt_epch_{str(epochs)}.pth")
  
- 
+
 def load_checkpoint(model, file_name):
     ckpt = torch.load(file_name, map_location=device)
     model_weights = ckpt['model_weights']
@@ -191,7 +194,7 @@ class SentimentLSTM(nn.Module):
                             dropout=drop_prob, batch_first=True)
         self.decoder_lstm = nn.LSTM(hidden_dim, hidden_dim, n_layers,
                             dropout=drop_prob, batch_first=True)
-        self.attention = MultiHeadAttention(hidden_dim)
+        self.attention = MultiHeadAttention(hidden_dim, num_heads)
         self.dropout = nn.Dropout(dropout_prob)
         self.fc = nn.Linear(hidden_dim, output_size)
         self.sig = nn.Sigmoid()
