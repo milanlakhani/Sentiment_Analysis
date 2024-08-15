@@ -9,6 +9,8 @@ from torch.utils.data import DataLoader, TensorDataset
 import torch.nn as nn
 import wandb
 
+import models
+
 wandb.login()
 
 with open("config.yaml", 'r') as file:
@@ -172,66 +174,12 @@ print()
 print('Sample label size: ', sample_y.size()) # batch_size
 print('Sample label: \n', sample_y)
 
-# Define the LSTM Network Architecture
-
-class SentimentLSTM(nn.Module):
-    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, drop_prob_1=0.5, drop_prob_2=0.3):
-        super().__init__()
-        self.output_size = output_size
-        self.n_layers = n_layers
-        self.hidden_dim = hidden_dim
-
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers,
-                            dropout=drop_prob_1, batch_first=True)
-        self.dropout = nn.Dropout(drop_prob_2)
-        self.fc = nn.Linear(hidden_dim, output_size)
-        self.sig = nn.Sigmoid()
-
-
-    def forward(self, x, hidden):
-        batch_size = x.size(0)
-
-        embeds = self.embedding(x)
-        lstm_out, hidden = self.lstm(embeds, hidden)
-
-        # Stack up LSTM outputs
-        lstm_out = lstm_out.contiguous().view(-1, self.hidden_dim)
-
-        # Dropout and fully-connected layer
-        out = self.dropout(lstm_out)
-        out = self.fc(out)
-        # Sigmoid function
-        sig_out = self.sig(out)
-
-        # Reshape to be batch_size first
-        sig_out = sig_out.view(batch_size, -1)
-        sig_out = sig_out[:, -1] # get last batch of labels
-
-        return sig_out, hidden
-
-
-    def init_hidden(self, batch_size, train_on_gpu=False):
-
-        # Create two new tensors with sizes n_layers x batch_size x hidden_dim,
-        # initialized to zero, for hidden state and cell state of LSTM
-        weight = next(self.parameters()).data
-
-        if (train_on_gpu):
-            hidden = (weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().cuda(),
-                  weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().cuda())
-        else:
-            hidden = (weight.new(self.n_layers, batch_size, self.hidden_dim).zero_(),
-                      weight.new(self.n_layers, batch_size, self.hidden_dim).zero_())
-
-        return hidden
-
 # Training the Network
 
 # Instantiate the model w/ hyperparams
 vocab_size = len(vocab_to_int)+1 # +1 for the 0 padding
 output_size = 1
-model = SentimentLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers)
+model = models.SentimentLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers)
 print(model)
 
 # First checking if GPU is available

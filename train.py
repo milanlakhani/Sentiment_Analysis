@@ -11,6 +11,8 @@ import torch.nn as nn
 import wandb
 import yaml
 
+import models
+
 wandb.login()
 
 with open("config.yaml", 'r') as file:
@@ -175,85 +177,12 @@ print()
 print('Sample label size: ', sample_y.size()) # batch_size
 print('Sample label: \n', sample_y)
 
-# Define the LSTM Network Architecture
-
-class MultiHeadAttention(nn.Module):
-    def __init__(self, hidden_dim, num_heads=8):
-        super(MultiHeadAttention, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.multihead_attn = nn.MultiheadAttention(embed_dim=hidden_dim, num_heads=num_heads, batch_first=True)
-        self.softmax = nn.Softmax(dim=1)
-
-    def forward(self, lstm_output, final_hidden_state):
-        # Expand the final_hidden_state to match lstm_output's sequence length
-        final_hidden_state = final_hidden_state.unsqueeze(1).repeat(1, lstm_output.size(1), 1)
-
-        # Apply multi-head attention
-        attn_output, _ = self.multihead_attn(query=final_hidden_state, key=lstm_output, value=lstm_output)
-
-        # Average over the sequence length
-        return attn_output.mean(dim=1)
-
-class SentimentAttentionLSTM(nn.Module):
-    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads=8, drop_prob_1=0.5, drop_prob_2=0.3):
-        super().__init__()
-        self.output_size = output_size
-        self.n_layers = n_layers
-        self.hidden_dim = hidden_dim
-
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.encoder_lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers,
-                            dropout=drop_prob_1, batch_first=True)
-        self.decoder_lstm = nn.LSTM(hidden_dim, hidden_dim, n_layers,
-                            dropout=drop_prob_1, batch_first=True)
-        self.attention = MultiHeadAttention(hidden_dim, num_heads)
-        self.dropout = nn.Dropout(drop_prob_2)
-        self.fc = nn.Linear(hidden_dim, output_size)
-        self.sig = nn.Sigmoid()
-
-    def forward(self, input, hidden):
-        batch_size = input.size(0)
-
-        embeds = self.embedding(input)
-        enc_lstm_out, hidden = self.encoder_lstm(embeds, hidden)
-
-        # Pass the encoder output to the decoder
-        dec_lstm_out, hidden = self.decoder_lstm(enc_lstm_out, hidden)
-
-        # Apply attention mechanism
-        attn_output = self.attention(dec_lstm_out, hidden[0][-1])
-
-        # Dropout and fully-connected layer
-        out = self.dropout(attn_output)
-        out = self.fc(out)
-
-        # Sigmoid function including reshape
-        sig_out = self.sig(out).view(batch_size, -1)[:, -1]
-
-        return sig_out, hidden
-
-
-    def init_hidden(self, batch_size):
-        ''' Create two new tensors with sizes n_layers x batch_size x hidden_dim,
-            initialized to zero, for hidden state and cell state of LSTM
-        '''
-        weight = next(self.parameters()).data
-
-        if (train_on_gpu):
-            hidden = (weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().cuda(),
-                  weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().cuda())
-        else:
-            hidden = (weight.new(self.n_layers, batch_size, self.hidden_dim).zero_(),
-                      weight.new(self.n_layers, batch_size, self.hidden_dim).zero_())
-
-        return hidden
-
 # Training the Network
 
 # Instantiate the model w/ hyperparams
 vocab_size = len(vocab_to_int)+1 # +1 for the 0 padding
 output_size = 1
-model = SentimentAttentionLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads, dropout_prob_1, dropout_prob_2)
+model = models.SentimentAttentionLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads, dropout_prob_1, dropout_prob_2)
 
 print(model)
 
