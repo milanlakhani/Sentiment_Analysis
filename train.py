@@ -9,41 +9,48 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 import torch.nn as nn
 import wandb
+import yaml
 
 wandb.login()
 
+with open("config.yaml", 'r') as file:
+    settings = yaml.safe_load(file)
+
 # Hyperparameters
-batch_size = 50
-embedding_dim = 400
-hidden_dim = 256
-n_layers = 2
-output_size = 1
-epochs = 3
-print_every = 100
-gradient_clipping = 5
-learning_rate = 0.0005
-dropout_prob_1 = 0.5
-dropout_prob_2 = 0.3
-seq_length = 500
-split_frac = 0.6
-num_heads = 8
+batch_size = settings["batch_size"]
+embedding_dim = settings["embedding_dim"]
+hidden_dim = settings["hidden_dim"]
+n_layers = settings["n_layers"]
+output_size = settings["output_size"]
+epochs = settings["epochs"]
+print_every = settings["print_every"]
+gradient_clipping = settings["gradient_clipping"]
+learning_rate = settings["learning_rate"]
+dropout_prob_1 = settings["dropout_prob_1"]
+dropout_prob_2 = settings["dropout_prob_2"]
+seq_length = settings["seq_length"]
+split_frac = settings["split_frac"]
+num_heads = settings["num_heads"]
+
+print("tada!")
+print(num_heads)
 
 run = wandb.init(
     project = "SA1",
     config = {
-        "batch_size": 50,
-        "embedding_dim": 400,
-        "hidden_dim": 256,
-        "n_layers": 2,
-        "output_size": 1,
-        "epochs": 3,
-        "gradient_clipping": 5,
-        "learning_rate": 0.0005,
-        "dropout_prob_1": 0.5,
-        "dropout_prob_2": 0.3,
-        "seq_length": 500,
-        "split_frac": 0.6,
-        "num_heads": 8
+        "batch_size": batch_size,
+        "embedding_dim": embedding_dim,
+        "hidden_dim": hidden_dim,
+        "n_layers": n_layers,
+        "output_size": output_size,
+        "epochs": epochs,
+        "gradient_clipping": gradient_clipping,
+        "learning_rate": learning_rate,
+        "dropout_prob_1": dropout_prob_1,
+        "dropout_prob_2": dropout_prob_2,
+        "seq_length": seq_length,
+        "split_frac": split_frac,
+        "num_heads": num_heads
     },
 )
 
