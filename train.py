@@ -13,7 +13,10 @@ import yaml
 
 import models
 
-wandb.login()
+WANDB_API_KEY = None
+
+if WANDB_API_KEY:
+    wandb.login()
 
 with open("config.yaml", 'r') as file:
     settings = yaml.safe_load(file)
@@ -34,24 +37,25 @@ seq_length = settings["seq_length"]
 split_frac = settings["split_frac"]
 num_heads = settings["num_heads"]
 
-run = wandb.init(
-    project = "SA1",
-    config = {
-        "batch_size": batch_size,
-        "embedding_dim": embedding_dim,
-        "hidden_dim": hidden_dim,
-        "n_layers": n_layers,
-        "output_size": output_size,
-        "epochs": epochs,
-        "gradient_clipping": gradient_clipping,
-        "learning_rate": learning_rate,
-        "dropout_prob_1": dropout_prob_1,
-        "dropout_prob_2": dropout_prob_2,
-        "seq_length": seq_length,
-        "split_frac": split_frac,
-        "num_heads": num_heads
-    },
-)
+if WANDB_API_KEY:
+    run = wandb.init(
+        project = "SA1",
+        config = {
+            "batch_size": batch_size,
+            "embedding_dim": embedding_dim,
+            "hidden_dim": hidden_dim,
+            "n_layers": n_layers,
+            "output_size": output_size,
+            "epochs": epochs,
+            "gradient_clipping": gradient_clipping,
+            "learning_rate": learning_rate,
+            "dropout_prob_1": dropout_prob_1,
+            "dropout_prob_2": dropout_prob_2,
+            "seq_length": seq_length,
+            "split_frac": split_frac,
+            "num_heads": num_heads
+        },
+    )
 
 def save_checkpoint(epoch, model, model_name, optimizer):
     ckpt = {'epoch': epoch, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
@@ -116,7 +120,8 @@ plt.ylabel('Frequency')
 plt.title('Distribution of Review Lengths')
 plt.show()
 pd.Series(reviews_len).describe()
-wandb.log({"Review lengths": wandb.Image(plt)})
+if WANDB_API_KEY:
+    wandb.log({"Review lengths": wandb.Image(plt)})
 
 # Remove reviews of 0 length
 reviews_int = [ reviews_int[i] for i, l in enumerate(reviews_len) if l>0 ]
@@ -258,7 +263,8 @@ for epoch in range(epochs):
                   "Step: {}...".format(counter),
                   "Loss: {:.6f}...".format(loss.item()),
                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
-    wandb.log({"epoch": epoch+1, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
+    if WANDB_API_KEY:
+        wandb.log({"epoch": epoch+1, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
     print(f"Saving epoch {epoch+1} checkpoint")
     save_checkpoint(epoch+1, model, "LSTM-2", optimizer)
     print(f"Saved epoch {epoch+1} checkpoint")
@@ -324,5 +330,6 @@ print("Precision: {:.3f}".format(precision))
 print("Recall: {:.3f}".format(recall))
 print("F1 Score: {:.3f}".format(f1))
 
-wandb.log({"Test loss": test_loss, "Test accuracy": test_acc, "Precision": precision, "Recall": recall, "F1 Score": f1})
+if WANDB_API_KEY:
+    wandb.log({"Test loss": test_loss, "Test accuracy": test_acc, "Precision": precision, "Recall": recall, "F1 Score": f1})
 
