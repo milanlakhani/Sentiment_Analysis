@@ -257,7 +257,7 @@ for epoch in range(epochs):
                 val_losses.append(val_loss.item())
 
             model.train()
-            print("Epoch: {}/{}...".format(e+1, epochs),
+            print("Epoch: {}/{}...".format(epoch+1, epochs),
                   "Step: {}...".format(counter),
                   "Loss: {:.6f}...".format(loss.item()),
                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
