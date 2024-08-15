@@ -16,7 +16,7 @@ import models
 WANDB_API_KEY = None
 
 if WANDB_API_KEY:
-    wandb.login()
+    wandb.login(key=WANDB_API_KEY)
 
 with open("config.yaml", 'r') as file:
     settings = yaml.safe_load(file)
@@ -332,4 +332,3 @@ print("F1 Score: {:.3f}".format(f1))
 
 if WANDB_API_KEY:
     wandb.log({"Test loss": test_loss, "Test accuracy": test_acc, "Precision": precision, "Recall": recall, "F1 Score": f1})
-
