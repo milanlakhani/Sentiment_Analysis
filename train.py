@@ -59,7 +59,7 @@ if WANDB_API_KEY:
 
 def save_checkpoint(epoch, model, model_name, optimizer):
     ckpt = {'epoch': epoch, 'model_weights': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
-    torch.save(ckpt, f"checkpoints/{model_name}_ckpt_epch_{str(epoch)}.pth")
+    torch.save(ckpt, f"{model_name}_ckpt_epch_{str(epoch)}.pth")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
