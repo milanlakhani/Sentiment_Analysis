@@ -11,36 +11,39 @@ import wandb
 
 wandb.login()
 
+with open("config.yaml", 'r') as file:
+    settings = yaml.safe_load(file)
+
 # Hyperparameters
-batch_size = 50
-embedding_dim = 400
-hidden_dim = 256
-n_layers = 2
-output_size = 1
-epochs = 3
-print_every = 100
-gradient_clipping = 5
-learning_rate = 0.01
-dropout_prob_1 = 0.5
-dropout_prob_2 = 0.3
-seq_length = 200
-split_frac = 0.8
+batch_size = settings["batch_size"]
+embedding_dim = settings["embedding_dim"]
+hidden_dim = settings["hidden_dim"]
+n_layers = settings["n_layers"]
+output_size = settings["output_size"]
+epochs = settings["epochs"]
+print_every = settings["print_every"]
+gradient_clipping = settings["gradient_clipping"]
+learning_rate = settings["learning_rate"]
+dropout_prob_1 = settings["dropout_prob_1"]
+dropout_prob_2 = settings["dropout_prob_2"]
+seq_length = settings["seq_length"]
+split_frac = settings["split_frac"]
 
 run = wandb.init(
     project = "SA1",
     config = {
-        "batch_size": 50,
-        "embedding_dim": 400,
-        "hidden_dim": 256,
-        "n_layers": 2,
-        "output_size": 1,
-        "epochs": 3,
-        "gradient_clipping": 5,
-        "learning_rate": 0.01,
-        "dropout_prob_1": 0.5,
-        "dropout_prob_2": 0.3,
-        "seq_length": 200,
-        "split_frac": 0.8
+        "batch_size": batch_size,
+        "embedding_dim": embedding_dim,
+        "hidden_dim": hidden_dim,
+        "n_layers": n_layers,
+        "output_size": output_size,
+        "epochs": epochs,
+        "gradient_clipping": gradient_clipping,
+        "learning_rate": learning_rate,
+        "dropout_prob_1": dropout_prob_1,
+        "dropout_prob_2": dropout_prob_2,
+        "seq_length": seq_length,
+        "split_frac": split_frac,
     },
 )
 
@@ -368,49 +371,3 @@ print("F1 Score: {:.3f}".format(f1))
 
 wandb.log({"Test loss": test_loss, "Test accuracy": test_acc, "Precision": precision, "Recall": recall, "F1 Score": f1})
 
-# On User-generated Data
-# First, we will define a tokenize function that will take care of pre-processing steps and then we will create a predict function that will give us the final output after parsing the user provided review.
-
-def preprocess(review, vocab_to_int):
-    review = review.lower()
-    word_list = review.split()
-    num_list = []
-    reviews_int = []
-    for word in word_list:
-        if word in vocab_to_int.keys():
-            num_list.append(vocab_to_int[word])
-    reviews_int.append(num_list)
-    return reviews_int
-
-def predict(net, test_review, sequence_length=200):
-    ''' Prints out whether a given review is predicted to be positive or negative in sentiment.'''
-
-    int_rev = preprocess(test_review, vocab_to_int)
-    features = pad_features(int_rev, seq_length=seq_length)
-
-    features = torch.from_numpy(features)
-
-    net.eval()
-    val_h = net.init_hidden(1)
-    val_h = tuple([each.data for each in val_h])
-
-    if(train_on_gpu):
-        features = features.cuda()
-
-    output, val_h = net(features, val_h)
-
-    pred = torch.round(output)
-    output = ["Positive" if pred.item() == 1 else "Negative"]
-
-    print(output)
-
-# Test reviews
-test_review_pos = 'This movie had the best acting and the dialogue was so good. I loved it.'
-test_review_neg = 'The worst movie I have seen; acting was terrible and I want my money back. This movie had bad acting and the dialogue was slow.'
-
-# Call function
-seq_length=200
-print(test_review_pos)
-predict(net, test_review_pos, seq_length)
-print(test_review_neg)
-predict(net, test_review_neg, seq_length)

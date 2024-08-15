@@ -32,9 +32,6 @@ seq_length = settings["seq_length"]
 split_frac = settings["split_frac"]
 num_heads = settings["num_heads"]
 
-print("tada!")
-print(num_heads)
-
 run = wandb.init(
     project = "SA1",
     config = {
