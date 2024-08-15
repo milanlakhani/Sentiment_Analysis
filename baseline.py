@@ -1,8 +1,9 @@
+from collections import Counter
+from string import punctuation
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from collections import Counter
-from string import punctuation
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 import torch.nn as nn
@@ -20,6 +21,8 @@ epochs = 3
 print_every = 100
 gradient_clipping = 5
 learning_rate = 0.01
+dropout_prob_1 = 0.5
+dropout_prob_2 = 0.3
 seq_length = 200
 split_frac = 0.8
 
@@ -34,6 +37,8 @@ run = wandb.init(
         "epochs": 3,
         "gradient_clipping": 5,
         "learning_rate": 0.01,
+        "dropout_prob_1": 0.5,
+        "dropout_prob_2": 0.3,
         "seq_length": 200,
         "split_frac": 0.8
     },
@@ -44,11 +49,18 @@ def save_checkpoint(epoch, model, model_name, optimizer):
     torch.save(ckpt, f"checkpoints/{model_name}_ckpt_epch_{str(epoch)}.pth")
 
 
-def load_checkpoint(model, file_name):
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def load_checkpoint(model, file_name, device=None, optimizer=None):
+    if not device:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     ckpt = torch.load(file_name, map_location=device)
     model_weights = ckpt['model_weights']
     model.load_state_dict(model_weights)
     print("Model's pretrained weights loaded!")
+    if optimizer:
+        optimizer.load_state_dict(ckpt['optimizer_state'])
+    print("Optimizer's state loaded!")
 
 df = pd.read_csv("./IMDB Dataset.csv")
 
@@ -157,7 +169,7 @@ print('Sample label: \n', sample_y)
 # Define the LSTM Network Architecture
 
 class SentimentLSTM(nn.Module):
-    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, drop_prob=0.5):
+    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, drop_prob_1=0.5, drop_prob_2=0.3):
         super().__init__()
         self.output_size = output_size
         self.n_layers = n_layers
@@ -165,8 +177,8 @@ class SentimentLSTM(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers,
-                            dropout=drop_prob, batch_first=True)
-        self.dropout = nn.Dropout(0.3)
+                            dropout=drop_prob_1, batch_first=True)
+        self.dropout = nn.Dropout(drop_prob_2)
         self.fc = nn.Linear(hidden_dim, output_size)
         self.sig = nn.Sigmoid()
 

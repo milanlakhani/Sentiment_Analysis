@@ -1,9 +1,10 @@
+from collections import Counter
+from string import punctuation
+
 # !pip install wandb
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from collections import Counter
-from string import punctuation
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 import torch.nn as nn
@@ -21,7 +22,8 @@ epochs = 3
 print_every = 100
 gradient_clipping = 5
 learning_rate = 0.0005
-dropout_prob = 0.3
+dropout_prob_1 = 0.5
+dropout_prob_2 = 0.3
 seq_length = 500
 split_frac = 0.6
 num_heads = 8
@@ -37,7 +39,8 @@ run = wandb.init(
         "epochs": 3,
         "gradient_clipping": 5,
         "learning_rate": 0.0005,
-        "dropout_prob": 0.3,
+        "dropout_prob_1": 0.5,
+        "dropout_prob_2": 0.3,
         "seq_length": 500,
         "split_frac": 0.6,
         "num_heads": 8
@@ -50,11 +53,16 @@ def save_checkpoint(epoch, model, model_name, optimizer):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def load_checkpoint(model, file_name):
+def load_checkpoint(model, file_name, device=None, optimizer=None):
+    if not device:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     ckpt = torch.load(file_name, map_location=device)
     model_weights = ckpt['model_weights']
     model.load_state_dict(model_weights)
     print("Model's pretrained weights loaded!")
+    if optimizer:
+        optimizer.load_state_dict(ckpt['optimizer_state'])
+    print("Optimizer's state loaded!")
 
 df = pd.read_csv("./IMDB Dataset.csv")
 
@@ -183,8 +191,8 @@ class MultiHeadAttention(nn.Module):
 
         return attn_output.mean(dim=1)  # Average over the sequence length
 
-class SentimentLSTM(nn.Module):
-    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, drop_prob=0.5):
+class SentimentAttentionLSTM(nn.Module):
+    def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads=8, drop_prob_1=0.5, drop_prob_2=0.3):
         super().__init__()
         self.output_size = output_size
         self.n_layers = n_layers
@@ -192,11 +200,11 @@ class SentimentLSTM(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.encoder_lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers,
-                            dropout=drop_prob, batch_first=True)
+                            dropout=drop_prob_1, batch_first=True)
         self.decoder_lstm = nn.LSTM(hidden_dim, hidden_dim, n_layers,
-                            dropout=drop_prob, batch_first=True)
+                            dropout=drop_prob_1, batch_first=True)
         self.attention = MultiHeadAttention(hidden_dim, num_heads)
-        self.dropout = nn.Dropout(dropout_prob)
+        self.dropout = nn.Dropout(drop_prob_2)
         self.fc = nn.Linear(hidden_dim, output_size)
         self.sig = nn.Sigmoid()
 
@@ -245,7 +253,8 @@ class SentimentLSTM(nn.Module):
 # Instantiate the model w/ hyperparams
 vocab_size = len(vocab_to_int)+1 # +1 for the 0 padding
 output_size = 1
-net = SentimentLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers)
+net = SentimentAttentionLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads, dropout_prob_1, dropout_prob_2)
+
 print(net)
 
 # First checking if GPU is available
