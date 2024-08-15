@@ -10,5 +10,5 @@ learning_rate: 0.0005
 dropout_prob_1: 0.5
 dropout_prob_2: 0.3
 seq_length: 500
-split_frac: 0.6
+split_frac: 0.8
 num_heads: 8
