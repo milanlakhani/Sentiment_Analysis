@@ -60,18 +60,14 @@ class MultiHeadAttention(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, lstm_output, final_hidden_state):
-        # attn_weights = self.attn(final_hidden_state)
-        # attn_weights = torch.bmm(lstm_output, attn_weights.unsqueeze(2)).squeeze(2)
-        # soft_attn_weights = self.softmax(attn_weights)
-        # new_hidden_state = torch.bmm(lstm_output.transpose(1, 2), soft_attn_weights.unsqueeze(2)).squeeze(2)
-        # return new_hidden_state
         # Expand the final_hidden_state to match lstm_output's sequence length
         final_hidden_state = final_hidden_state.unsqueeze(1).repeat(1, lstm_output.size(1), 1)
 
         # Apply multi-head attention
         attn_output, _ = self.multihead_attn(query=final_hidden_state, key=lstm_output, value=lstm_output)
 
-        return attn_output.mean(dim=1)  # Average over the sequence length
+        # Average over the sequence length
+        return attn_output.mean(dim=1)
 
 class SentimentAttentionLSTM(nn.Module):
     def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads=8, drop_prob_1=0.5, drop_prob_2=0.3):
@@ -90,10 +86,10 @@ class SentimentAttentionLSTM(nn.Module):
         self.fc = nn.Linear(hidden_dim, output_size)
         self.sig = nn.Sigmoid()
 
-    def forward(self, x, hidden):
-        batch_size = x.size(0)
+    def forward(self, input, hidden):
+        batch_size = input.size(0)
 
-        embeds = self.embedding(x)
+        embeds = self.embedding(input)
         enc_lstm_out, hidden = self.encoder_lstm(embeds, hidden)
 
         # Pass the encoder output to the decoder
@@ -105,17 +101,14 @@ class SentimentAttentionLSTM(nn.Module):
         # Dropout and fully-connected layer
         out = self.dropout(attn_output)
         out = self.fc(out)
-        # Sigmoid function
-        sig_out = self.sig(out)
 
-        # Reshape to be batch_size first
-        sig_out = sig_out.view(batch_size, -1)
-        sig_out = sig_out[:, -1] # get last batch of labels
+        # Sigmoid function including reshape
+        sig_out = self.sig(out).view(batch_size, -1)[:, -1]
 
         return sig_out, hidden
 
 
-    def init_hidden(self, batch_size, train_on_gpu = False):
+    def init_hidden(self, batch_size, train_on_gpu=False):
         ''' Create two new tensors with sizes n_layers x batch_size x hidden_dim,
             initialized to zero, for hidden state and cell state of LSTM
         '''

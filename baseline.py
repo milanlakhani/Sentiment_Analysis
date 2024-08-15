@@ -76,16 +76,20 @@ df['len_review'] = df['clean_text'].apply(lambda x:len(x))
 
 # Create list of reviews
 review_list = df['clean_text'].tolist()
-# Create a list of words
-review_list = ' '.join(review_list)
-words = review_list.split()
 
-# Count words using Counter Method
-count_words = Counter(words)
-total_words = len(words)
+def get_vocab_int_dict(review_list):
+    # Create a list of words
+    review_list = ' '.join(review_list)
+    words = review_list.split()
+    # Count words using Counter Method
+    count_words = Counter(words)
+    # sorted_words = count_words.most_common(len(words))
+    # vocab_to_int = {w:i+1 for i, (w,c) in enumerate(sorted_words)}
+    vocab_to_int = {w:i+1 for i, (w,c) in enumerate(count_words.items())}
+    return vocab_to_int
 
-sorted_words = count_words.most_common(total_words)
-vocab_to_int = {w:i+1 for i, (w,c) in enumerate(sorted_words)}
+vocab_to_int = get_vocab_int_dict(review_list)
+
 reviews_split = df['clean_text'].tolist()
 
 # Tokenize — Encode the words
@@ -93,7 +97,6 @@ reviews_int = []
 for review in reviews_split:
     r = [vocab_to_int[w] for w in review.split()]
     reviews_int.append(r)
-print (reviews_int[0:3])
 
 # Tokenize — Encode the labels
 labels_split = df['sentiment'].tolist()
@@ -208,7 +211,7 @@ class SentimentLSTM(nn.Module):
         return sig_out, hidden
 
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, batch_size, train_on_gpu=False):
 
         # Create two new tensors with sizes n_layers x batch_size x hidden_dim,
         # initialized to zero, for hidden state and cell state of LSTM
@@ -228,8 +231,8 @@ class SentimentLSTM(nn.Module):
 # Instantiate the model w/ hyperparams
 vocab_size = len(vocab_to_int)+1 # +1 for the 0 padding
 output_size = 1
-net = SentimentLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers)
-print(net)
+model = SentimentLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers)
+print(model)
 
 # First checking if GPU is available
 train_on_gpu=torch.cuda.is_available()
@@ -241,19 +244,19 @@ else:
 
 # Loss and optimization functions
 criterion = nn.BCELoss()
-optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 # Training params
 counter = 0
 
 # Move model to GPU, if available
 if(train_on_gpu):
-    net.cuda()
+    model.cuda()
 
-net.train()
+model.train()
 for epoch in range(epochs):
     # Initialize hidden state
-    h = net.init_hidden(batch_size)
+    h = model.init_hidden(batch_size, train_on_gpu)
 
     # Batch loop
     for inputs, labels in train_loader:
@@ -268,24 +271,24 @@ for epoch in range(epochs):
         h = tuple([each.data for each in h])
 
         # Zero accumulated gradients
-        net.zero_grad()
+        model.zero_grad()
 
         # Get the output from the model
-        output, h = net(inputs, h)
+        output, h = model(inputs, h)
 
         # Calculate the loss and perform backprop
         loss = criterion(output.squeeze(), labels.float())
         loss.backward()
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        nn.utils.clip_grad_norm_(net.parameters(), gradient_clipping)
+        nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
         optimizer.step()
 
         # Loss stats
         if counter % print_every == 0:
             # Get validation loss
-            val_h = net.init_hidden(batch_size)
+            val_h = model.init_hidden(batch_size, train_on_gpu)
             val_losses = []
-            net.eval()
+            model.eval()
             for inputs, labels in valid_loader:
 
                 # Variables for hidden state for backprop
@@ -294,19 +297,19 @@ for epoch in range(epochs):
                 if(train_on_gpu):
                     inputs, labels = inputs.cuda(), labels.cuda()
 
-                output, val_h = net(inputs, val_h)
+                output, val_h = model(inputs, val_h)
                 val_loss = criterion(output.squeeze(), labels.float())
 
                 val_losses.append(val_loss.item())
 
-            net.train()
+            model.train()
             print("Epoch: {}/{}...".format(e+1, epochs),
                   "Step: {}...".format(counter),
                   "Loss: {:.6f}...".format(loss.item()),
                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
     wandb.log({"epoch": epoch+1, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
     print(f"Saving epoch {epoch+1} checkpoint")
-    save_checkpoint(epoch+1, net, "LSTM-1", optimizer)
+    save_checkpoint(epoch+1, model, "LSTM-1", optimizer)
     print(f"Saved epoch {epoch+1} checkpoint")
 
 # Testing
@@ -314,13 +317,13 @@ for epoch in range(epochs):
 test_losses = []
 num_correct = 0
 
-h = net.init_hidden(batch_size)
+h = model.init_hidden(batch_size, train_on_gpu)
 
 true_positives = 0
 false_positives = 0
 false_negatives = 0
 
-net.eval()
+model.eval()
 for inputs, labels in test_loader:
 
     # Variables for hidden state for backprop
@@ -330,7 +333,7 @@ for inputs, labels in test_loader:
         inputs, labels = inputs.cuda(), labels.cuda()
 
     # Get predicted outputs
-    output, h = net(inputs, h)
+    output, h = model(inputs, h)
 
     # Calculate loss
     test_loss = criterion(output.squeeze(), labels.float())

@@ -79,16 +79,20 @@ df['len_review'] = df['clean_text'].apply(lambda x:len(x))
 
 # Create list of reviews
 review_list = df['clean_text'].tolist()
-# Create a list of words
-review_list = ' '.join(review_list)
-words = review_list.split()
 
-# Count words using Counter Method
-count_words = Counter(words)
-total_words = len(words)
+def get_vocab_int_dict(review_list):
+    # Create a list of words
+    review_list = ' '.join(review_list)
+    words = review_list.split()
+    # Count words using Counter Method
+    count_words = Counter(words)
+    # sorted_words = count_words.most_common(len(words))
+    # vocab_to_int = {w:i+1 for i, (w,c) in enumerate(sorted_words)}
+    vocab_to_int = {w:i+1 for i, (w,c) in enumerate(count_words.items())}
+    return vocab_to_int
 
-sorted_words = count_words.most_common(total_words)
-vocab_to_int = {w:i+1 for i, (w,c) in enumerate(sorted_words)}
+vocab_to_int = get_vocab_int_dict(review_list)
+
 reviews_split = df['clean_text'].tolist()
 
 # Tokenize — Encode the words
@@ -96,7 +100,6 @@ reviews_int = []
 for review in reviews_split:
     r = [vocab_to_int[w] for w in review.split()]
     reviews_int.append(r)
-print (reviews_int[0:3])
 
 # Tokenize — Encode the labels
 labels_split = df['sentiment'].tolist()
@@ -182,18 +185,14 @@ class MultiHeadAttention(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, lstm_output, final_hidden_state):
-        # attn_weights = self.attn(final_hidden_state)
-        # attn_weights = torch.bmm(lstm_output, attn_weights.unsqueeze(2)).squeeze(2)
-        # soft_attn_weights = self.softmax(attn_weights)
-        # new_hidden_state = torch.bmm(lstm_output.transpose(1, 2), soft_attn_weights.unsqueeze(2)).squeeze(2)
-        # return new_hidden_state
         # Expand the final_hidden_state to match lstm_output's sequence length
         final_hidden_state = final_hidden_state.unsqueeze(1).repeat(1, lstm_output.size(1), 1)
 
         # Apply multi-head attention
         attn_output, _ = self.multihead_attn(query=final_hidden_state, key=lstm_output, value=lstm_output)
 
-        return attn_output.mean(dim=1)  # Average over the sequence length
+        # Average over the sequence length
+        return attn_output.mean(dim=1)
 
 class SentimentAttentionLSTM(nn.Module):
     def __init__(self, vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads=8, drop_prob_1=0.5, drop_prob_2=0.3):
@@ -212,10 +211,10 @@ class SentimentAttentionLSTM(nn.Module):
         self.fc = nn.Linear(hidden_dim, output_size)
         self.sig = nn.Sigmoid()
 
-    def forward(self, x, hidden):
-        batch_size = x.size(0)
+    def forward(self, input, hidden):
+        batch_size = input.size(0)
 
-        embeds = self.embedding(x)
+        embeds = self.embedding(input)
         enc_lstm_out, hidden = self.encoder_lstm(embeds, hidden)
 
         # Pass the encoder output to the decoder
@@ -227,12 +226,9 @@ class SentimentAttentionLSTM(nn.Module):
         # Dropout and fully-connected layer
         out = self.dropout(attn_output)
         out = self.fc(out)
-        # Sigmoid function
-        sig_out = self.sig(out)
 
-        # Reshape to be batch_size first
-        sig_out = sig_out.view(batch_size, -1)
-        sig_out = sig_out[:, -1] # get last batch of labels
+        # Sigmoid function including reshape
+        sig_out = self.sig(out).view(batch_size, -1)[:, -1]
 
         return sig_out, hidden
 
@@ -257,9 +253,9 @@ class SentimentAttentionLSTM(nn.Module):
 # Instantiate the model w/ hyperparams
 vocab_size = len(vocab_to_int)+1 # +1 for the 0 padding
 output_size = 1
-net = SentimentAttentionLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads, dropout_prob_1, dropout_prob_2)
+model = SentimentAttentionLSTM(vocab_size, output_size, embedding_dim, hidden_dim, n_layers, num_heads, dropout_prob_1, dropout_prob_2)
 
-print(net)
+print(model)
 
 # First checking if GPU is available
 train_on_gpu=torch.cuda.is_available()
@@ -271,24 +267,23 @@ else:
 
 # Loss and optimization functions
 criterion = nn.BCELoss()
-optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 # Training params
 counter = 0
 
 # Move model to GPU, if available
 if(train_on_gpu):
-    net.cuda()
+    model.cuda()
 
-net.train()
+model.train()
 for epoch in range(epochs):
     # Initialize hidden state
-    h = net.init_hidden(batch_size)
+    h = model.init_hidden(batch_size, train_on_gpu)
 
     # Batch loop
     for inputs, labels in train_loader:
         counter += 1
-        #print(counter)
 
         if(train_on_gpu):
             inputs, labels = inputs.cuda(), labels.cuda()
@@ -298,24 +293,24 @@ for epoch in range(epochs):
         h = tuple([each.data for each in h])
 
         # Zero accumulated gradients
-        net.zero_grad()
+        model.zero_grad()
 
         # Get the output from the model
-        output, h = net(inputs, h)
+        output, h = model(inputs, h)
 
         # Calculate the loss and perform backprop
         loss = criterion(output.squeeze(), labels.float())
         loss.backward()
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        nn.utils.clip_grad_norm_(net.parameters(), gradient_clipping)
+        nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
         optimizer.step()
 
         # Loss stats
         if counter % print_every == 0:
             # Get validation loss
-            val_h = net.init_hidden(batch_size)
+            val_h = model.init_hidden(batch_size, train_on_gpu)
             val_losses = []
-            net.eval()
+            model.eval()
             for inputs, labels in valid_loader:
 
                 # Variables for hidden state for backprop
@@ -324,19 +319,19 @@ for epoch in range(epochs):
                 if(train_on_gpu):
                     inputs, labels = inputs.cuda(), labels.cuda()
 
-                output, val_h = net(inputs, val_h)
+                output, val_h = model(inputs, val_h)
                 val_loss = criterion(output.squeeze(), labels.float())
 
                 val_losses.append(val_loss.item())
 
-            net.train()
+            model.train()
             print("Epoch: {}/{}...".format(epoch+1, epochs),
                   "Step: {}...".format(counter),
                   "Loss: {:.6f}...".format(loss.item()),
                   "Val Loss: {:.6f}".format(np.mean(val_losses)))
     wandb.log({"epoch": epoch+1, "step": counter, "loss": loss.item(), "val loss": np.mean(val_losses)})
     print(f"Saving epoch {epoch+1} checkpoint")
-    save_checkpoint(epoch+1, net, "LSTM-2", optimizer)
+    save_checkpoint(epoch+1, model, "LSTM-2", optimizer)
     print(f"Saved epoch {epoch+1} checkpoint")
 
 # Testing
@@ -344,13 +339,13 @@ for epoch in range(epochs):
 test_losses = []
 num_correct = 0
 
-h = net.init_hidden(batch_size)
+h = model.init_hidden(batch_size, train_on_gpu)
 
 true_positives = 0
 false_positives = 0
 false_negatives = 0
 
-net.eval()
+model.eval()
 for inputs, labels in test_loader:
 
     # Variables for hidden state for backprop
@@ -360,7 +355,7 @@ for inputs, labels in test_loader:
         inputs, labels = inputs.cuda(), labels.cuda()
 
     # Get predicted outputs
-    output, h = net(inputs, h)
+    output, h = model(inputs, h)
 
     # Calculate loss
     test_loss = criterion(output.squeeze(), labels.float())
