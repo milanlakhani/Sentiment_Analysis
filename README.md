@@ -43,7 +43,7 @@ I have generated some Wandb reports of runs with different hyperparameters, whic
 
 ## Inference
 
-Open the root folder, which contains the inference file, and add checkpoint `LSTM-2_ckpt_epch_3.pth` to the folder if you have not already, as detailed in the Setup section.
+Open the root folder, which contains the inference file `inference.ipynb` as well as some other files, and add checkpoint `LSTM-2_ckpt_epch_3.pth` to the folder if you have not already, as detailed in the Setup section.
 
 Run all the cells of the inference notebook in order. If using Google Colab, you will need to first save the directory in your drive, then at the top of this notebook add
 ```
