@@ -38,7 +38,7 @@ These include:
 
 If you want to record results of a model, near the top of the model file (`baseline.py` or `train.py`), update the value of `WANDB_API_KEY` from `None` to your API key. During training you will see results in project `SA1`.
 
-See wandb reports here: ##########TODO Wandb reports!!!!!!!!!!
+I have generated some Wandb reports of runs with different hyperparameters, which you can find here https://api.wandb.ai/links/milanlkhn-city-university-of-london/zgdtg3jb
 
 
 ## Inference
